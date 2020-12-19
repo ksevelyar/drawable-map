@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Drawable Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+    integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+    crossorigin="" />
+  <link rel='stylesheet' href='//cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css' />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <style>
+    body {
+      margin: 0
+    }
+
+    #map {
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+    integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+    crossorigin=""></script>
+  <script src='https:////cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js'></script>
+
+  <script>
+    // Init
+    function initMap() {
+      const map = new L.Map('map', {
+        attributionControl: false,
+        center: new L.LatLng(38.929313, -116.94606999999999),
+        zoom: 11
+      })
+
+      const tileUrl = 'https://tile.thunderforest.com/pioneer/{z}/{x}/{y}.png?apikey=47d159bf76fa4e819944f960e8db472c',
+        layer = new L.TileLayer(tileUrl, {maxZoom: 18})
+      map.addLayer(layer)
+
+      return map
+    }
+    function initDraw(map) {
+      const drawnItems = new L.FeatureGroup()
+      map.addLayer(drawnItems)
+
+      const drawControl = new L.Control.Draw({
+        draw: {
+          marker: false,
+          polyline: false,
+          circlemarker: false,
+          circle: false,
+          rectangle: false
+        },
+        edit: {
+          featureGroup: drawnItems,
+          edit: false
+        }
+      })
+      map.addControl(drawControl)
+
+      return drawnItems
+    }
+
+    // API Client
+    async function fetchPolygons() {
+      const jsonAPIPolygons = await (await fetch('/api/polygons')).json()
+
+      return jsonAPIPolygons.data
+    }
+    async function createPolygon(polygon) {
+      const response = await fetch('/api/polygons', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({polygon: {coordinates: polygon.geometry.coordinates}})
+      })
+      return (await response.json()).data
+    }
+    async function deletePolygon(id) {
+      const response = await fetch(`/api/polygons/${id}`, {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'}
+      })
+    }
+
+    // Controller
+    function drawGeo(polygons, drawnItems) {
+      const geoJSONLayer = L.geoJSON(polygons, {style: {"color": "#644375"}})
+      geoJSONLayer.eachLayer(polygon => drawnItems.addLayer(polygon))
+    }
+
+    (async () => {
+      const map = initMap()
+      const drawnItems = initDraw(map)
+
+      drawGeo(await fetchPolygons(), drawnItems)
+
+      map.on(L.Draw.Event.CREATED, async event => {
+        const backendPolygon = await createPolygon(event.layer.toGeoJSON())
+        drawGeo(backendPolygon, drawnItems)
+      })
+      map.on(L.Draw.Event.DELETED, event => {
+        event.layers.toGeoJSON().features.forEach(layer => deletePolygon(layer.properties.id))
+      })
+    })()
+  </script>
+</body>
+
+</html>
