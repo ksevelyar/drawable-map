@@ -24,7 +24,7 @@ defmodule DrawableMapWeb.Endpoint do
     at: "/",
     from: :drawable_map,
     gzip: false,
-    only: ~w(css fonts images js favicon.ico robots.txt)
+    only: ~w(css fonts images js favicon.ico robots.txt index.html)
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.

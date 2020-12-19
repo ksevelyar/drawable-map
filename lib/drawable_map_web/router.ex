@@ -7,7 +7,11 @@ defmodule DrawableMapWeb.Router do
 
   scope "/api", DrawableMapWeb do
     pipe_through :api
+
+    resources "/polygons", PolygonController, except: [:new, :edit]
   end
+
+  get "/", DrawableMapWeb.RootController, :index
 
   # Enables LiveDashboard only for development
   #
@@ -19,9 +23,9 @@ defmodule DrawableMapWeb.Router do
   if Mix.env() in [:dev, :test] do
     import Phoenix.LiveDashboard.Router
 
-    scope "/" do
+    scope "/dashboard" do
       pipe_through [:fetch_session, :protect_from_forgery]
-      live_dashboard "/dashboard", metrics: DrawableMapWeb.Telemetry
+      live_dashboard "/", metrics: DrawableMapWeb.Telemetry
     end
   end
 end
